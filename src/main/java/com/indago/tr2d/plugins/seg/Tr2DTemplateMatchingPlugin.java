@@ -26,6 +26,7 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
+import com.indago.io.DoubleTypeImgLoader;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.log.Logger;
@@ -156,20 +157,11 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	@Override
 	public List< RandomAccessibleInterval< IntType > > getOutputs() {
-
-		//Return type of Fiji Plugin TemplateMatching method needs to change to List of RAIs//
-		//Or can any other method of Fiji Plugin be invoked bypassing run???
-		Map< String, Object > inputMap = new HashMap();
-		inputMap.put( "inputImage", tr2dModel.getRawData() );
-		inputMap.put( "inputTemplate", new File( model.get( 0 ) ) );
-		try {
-			inputMap.put( "saveResultsDir", tr2dModel.getProjectFolder().addFolder( "Template Matching Segmentations" ).getFolder() );
-		} catch ( IOException e ) {
-			e.printStackTrace();
-		}
-		inputMap.put( "segCircleRad", 6 );
-		commandService.run( TemplateMatchingPlugin.class, false, inputMap );
-		return null; //panel.getOutputs();
+		TemplateMatchingPlugin< ? > plugin = new TemplateMatchingPlugin<>();
+		RandomAccessibleInterval< DoubleType > template =
+				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
+		int segmentationRadius = 2;
+		return plugin.calculate(tr2dModel.getRawData(), template, segmentationRadius);
 	}
 
 	@Override
