@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>sc.fiji</groupId>
+		<artifactId>pom-indago</artifactId>
+		<version>2.2.10</version>
+	</parent>
+
+	<properties>
+		<license.licenseName>bsd_2</license.licenseName>
+		<license.copyrightOwners>TrNdy developers</license.copyrightOwners>
+
+		<!-- NB: Deploy releases to the ImageJ Maven repository. -->
+		<releaseProfiles>deploy-to-imagej</releaseProfiles>
+	</properties>
+
+	<groupId>com.indago.tr2d</groupId>
+	<artifactId>Tr2dTemplateMatchingPlugin</artifactId>
+	<version>0.1.0-SNAPSHOT</version>
+
+	<name>Tr2dTemplateMatchingPlugin</name>
+	<description>Segmentation plugin for Tr2d based on template matching.</description>
+	<url>https:github.com/mangalp/Tr2dTemplateMatchingPlugin</url>
+	<inceptionYear>2016</inceptionYear>
+	<organization>
+		<name>TrNdy</name>
+		<url>https://github.com/TrNdy</url>
+	</organization>
+	<licenses>
+		<license>
+			<name>Simplified BSD License</name>
+			<url>https://opensource.org/licenses/BSD-2-Clause</url>
+			<distribution>repo</distribution>
+		</license>
+	</licenses>
+
+	<dependencies>
+		<dependency>
+			<groupId>com.indago</groupId>
+			<artifactId>tr2d</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>io.github.mangalp</groupId>
+			<artifactId>template-matching-command</artifactId>
+			<version>0.1.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>com.miglayout</groupId>
+			<artifactId>miglayout</artifactId>
+			<classifier>swing</classifier>
+		</dependency>
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
+
+	<developers>
+		<developer>
+			<id>mangalp</id>
+			<name>Mangal Prakash</name>
+			<email>prakash@mpi-cbg.de</email>
+			<url>http://www.github.com/mangalp</url>
+			<organization>MPI-CBG</organization>
+			<organizationUrl>http://www.mpi-cbg.de/</organizationUrl>
+			<timezone>+1</timezone>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>none</name>
+		</contributor>
+	</contributors>
+
+	<mailingLists>
+		<mailingList>
+			<name>none</name>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:git://github.com/mangalp/Tr2dTemplateMatchingPlugin</connection>
+		<developerConnection>scm:git:git@github.com:mangalp/Tr2dTemplateMatchingPlugin</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/mangalp/Tr2dTemplateMatchingPlugin</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/mangalp/Tr2dTemplateMatchingPlugin/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>Travis CI</system>
+		<url>https://travis-ci.org/mangalp/Tr2dTemplateMatchingPlugin</url>
+	</ciManagement>
+
+	<repositories>
+		<repository>
+			<id>imagej.public</id>
+			<url>http://maven.imagej.net/content/groups/public</url>
+		</repository>
+	</repositories>
+</project>
