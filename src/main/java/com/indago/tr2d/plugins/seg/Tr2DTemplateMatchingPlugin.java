@@ -5,28 +5,21 @@
 package com.indago.tr2d.plugins.seg;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 
-import com.indago.io.DoubleTypeImgLoader;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.log.Logger;
@@ -34,6 +27,7 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import com.indago.IndagoLog;
+import com.indago.io.DoubleTypeImgLoader;
 import com.indago.tr2d.ui.model.Tr2dModel;
 import com.indago.tr2d.ui.util.JDoubleListTextPane;
 import com.mycompany.imagej.TemplateMatchingPlugin;
@@ -109,6 +103,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		controls.add( helper, "growx, wrap" );
 
 		JButton bStartSegmentation = new JButton( "start matching with selected template" );
+		bStartSegmentation.addActionListener( this::onStartSegmentationButtonClicked );
 		controls.add( bStartSegmentation, "growx, gapy 5 0, wrap" );
 		return controls;
 	}
@@ -144,24 +139,26 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private JButton initRemoveButton()
 	{
 		final JButton bRemove = new JButton( "-" );
-		bRemove.addActionListener( new ButtonListener() );
+		bRemove.addActionListener( this::onRemoveButtonClicked );
 		return bRemove;
 	}
 
 	private JButton initAddButton()
 	{
 		final JButton bAdd = new JButton( "+" );
-		bAdd.addActionListener( new ButtonListener() );
+		bAdd.addActionListener( this::onAddButtonClicked );
 		return bAdd;
 	}
 
 	@Override
 	public List< RandomAccessibleInterval< IntType > > getOutputs() {
-		TemplateMatchingPlugin< ? > plugin = new TemplateMatchingPlugin<>();
+		TemplateMatchingPlugin plugin = new TemplateMatchingPlugin();
+		context.inject( plugin );
 		RandomAccessibleInterval< DoubleType > template =
 				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
 		int segmentationRadius = 2;
 		return plugin.calculate(tr2dModel.getRawData(), template, segmentationRadius);
+
 	}
 
 	@Override
@@ -189,48 +186,38 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		// panel.close();
 	}
 
-	class ButtonListener implements ActionListener {
+	public void onAddButtonClicked( ActionEvent e ) {
+		JFileChooser fileChooser = new JFileChooser();
+		int returnName = fileChooser.showOpenDialog( null );
+		String path;
 
-		public ButtonListener() {
-			// TODO Auto-generated constructor stub
-		}
+		if ( returnName == JFileChooser.APPROVE_OPTION ) {
+			File f = fileChooser.getSelectedFile();
+			if ( f != null ) { // Make sure the user didn't choose a directory.
 
-		@Override
-		public void actionPerformed( ActionEvent e ) {
-			if ( e.getActionCommand().equals( "+" ) ) {
-				JFileChooser fileChooser = new JFileChooser();
-				int returnName = fileChooser.showOpenDialog( null );
-				String path;
-
-				if ( returnName == JFileChooser.APPROVE_OPTION ) {
-					File f = fileChooser.getSelectedFile();
-					if ( f != null ) { // Make sure the user didn't choose a directory.
-
-						path = f.getAbsolutePath();//get the absolute path to selected file
-						//below line to test the file chooser
-						System.out.println( path );
-						model.addElement( path );
-						System.out.println( model.getSize() );
-					}
-				}
-
-			}
-			if(e.getActionCommand().equals( "-" )) {
-
-				int[] idxs = listTemplates.getSelectedIndices();
-				for ( int index = 0; index < idxs.length; index++ ) {
-					if ( index >= 0 ) {
-						model.remove( index );
-					}
-
-				}
-				
-
-			}
-			if ( e.getActionCommand().equals( "start matching with selected template" ) ) {
-				// Do template Matching with the given threshold 
-				
+				path = f.getAbsolutePath();//get the absolute path to selected file
+				//below line to test the file chooser
+				System.out.println( path );
+				model.addElement( path );
+				System.out.println( model.getSize() );
 			}
 		}
 	}
+
+	public void onRemoveButtonClicked( ActionEvent e ) {
+		int[] idxs = listTemplates.getSelectedIndices();
+		for ( int index = 0; index < idxs.length; index++ ) {
+			if ( index >= 0 ) {
+				model.remove( index );
+			}
+		}
+	}
+
+	public void onStartSegmentationButtonClicked( ActionEvent e ) {
+		getOutputs();
+	}
+
+
+
+
 }
