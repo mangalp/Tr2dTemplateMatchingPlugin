@@ -8,8 +8,7 @@ import java.awt.event.WindowEvent;
 import java.io.File;
 import java.io.IOException;
 
-import javax.swing.JButton;
-import javax.swing.JFrame;
+import javax.swing.*;
 
 import org.scijava.Context;
 import org.scijava.ui.behaviour.util.RunnableAction;
@@ -19,7 +18,6 @@ import com.indago.tr2d.ui.model.Tr2dModel;
 
 import ij.ImagePlus;
 import net.imglib2.img.display.imagej.ImageJFunctions;
-
 
 public class DummyTr2D {
 
@@ -33,10 +31,10 @@ public class DummyTr2D {
 	private DummyTr2D() throws IOException {
 		plugin = initPlugin();
 		JFrame frame = setupFrame();
+		frame.setLayout( new BorderLayout() );
 		frame.add( plugin.getInteractionPanel() );
-		frame.pack();
-
 		frame.add( initBottomPanel(), BorderLayout.PAGE_END );
+		frame.pack();
 		frame.setVisible( true );
 
 		frame.addWindowListener( new WindowAdapter() {
