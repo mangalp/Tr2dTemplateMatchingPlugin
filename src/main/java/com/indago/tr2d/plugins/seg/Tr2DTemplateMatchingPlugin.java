@@ -40,7 +40,6 @@ import com.mycompany.imagej.TemplateMatchingPlugin;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandlePanel;
-import indago.ui.progress.DialogProgress;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.DoubleType;
@@ -69,20 +68,64 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	@Override
 	public JPanel getInteractionPanel() {
+		final JPanel controls = initControlsPanel();
+		final BdvHandlePanel bdv = initBdv( tr2dModel.getRawData() );
+		return wrapToJPanel( initSplitPane( controls, bdv ) );
+	}
 
-		final JButton bAdd = new JButton( "+" );
-		final JButton bRemove = new JButton( "-" );
+	private JSplitPane initSplitPane( JPanel controls, BdvHandlePanel bdv )
+	{
+		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, controls, bdv.getBdvHandle().getViewerPanel() );
+		splitPane.setOneTouchExpandable( true );
+		splitPane.setDividerLocation( 300 );
+		return splitPane;
+	}
 
-		JLabel lblThresholds;
-		JDoubleListTextPane txtThresholds;
+	private BdvHandlePanel initBdv( RandomAccessibleInterval< DoubleType > img )
+	{
+		final BdvHandlePanel bdv = new BdvHandlePanel( null, Bdv.options().is2D() );
+		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) );
+		return bdv;
+	}
 
-		JButton bStartSegmentation;
+	private JPanel wrapToJPanel( JSplitPane splitPane )
+	{
+		final JPanel splittedPanel = new JPanel();
+		splittedPanel.setLayout( new BorderLayout() );
+		splittedPanel.add( splitPane, BorderLayout.CENTER );
+		return splittedPanel;
+	}
 
-		DialogProgress trackingProgressDialog = null;
-
+	private JPanel initControlsPanel()
+	{
 		final MigLayout layout = new MigLayout( "fill", "[grow]", "" );
 		final JPanel controls = new JPanel( layout );
 
+		final JPanel list = initListPanel();
+		controls.add( list, "h 100%, grow, wrap" );
+
+		JPanel helper = initHelperPanel();
+		controls.add( helper, "growx, wrap" );
+
+		JButton bStartSegmentation = new JButton( "start matching with selected template" );
+		controls.add( bStartSegmentation, "growx, gapy 5 0, wrap" );
+		return controls;
+	}
+
+	private JPanel initHelperPanel()
+	{
+		JPanel helper = new JPanel( new BorderLayout() );
+		helper.add( new JLabel( "Thresholds:" ), BorderLayout.WEST );
+		JDoubleListTextPane txtThresholds = new JDoubleListTextPane();
+		txtThresholds.setEnabled( false );
+		helper.add( txtThresholds, BorderLayout.CENTER );
+		return helper;
+	}
+
+	private JPanel initListPanel()
+	{
+		final JButton bAdd = initAddButton();
+		final JButton bRemove = initRemoveButton();
 		final JPanel list = new JPanel( new BorderLayout() );
 		list.add( listTemplates, BorderLayout.CENTER );
 		list.setBorder( BorderFactory.createTitledBorder( "Templates" ) );
@@ -94,34 +137,21 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 		JScrollPane scrollPane = new JScrollPane( listTemplates );
 		list.add( scrollPane, BorderLayout.CENTER );
-		controls.add( list, "h 100%, grow, wrap" );
+		return list;
+	}
 
-		helper = new JPanel( new BorderLayout() );
-		lblThresholds = new JLabel( "Thresholds:" );
-		txtThresholds = new JDoubleListTextPane();
-		txtThresholds.setEnabled( false );
-		helper.add( lblThresholds, BorderLayout.WEST );
-		helper.add( txtThresholds, BorderLayout.CENTER );
-		controls.add( helper, "growx, wrap" );
-
-		bStartSegmentation = new JButton( "start matching with selected template" );
-		controls.add( bStartSegmentation, "growx, gapy 5 0, wrap" );
-
-		bAdd.addActionListener( new ButtonListener() );
+	private JButton initRemoveButton()
+	{
+		final JButton bRemove = new JButton( "-" );
 		bRemove.addActionListener( new ButtonListener() );
+		return bRemove;
+	}
 
-		final JFrame frame = new JFrame();
-		RandomAccessibleInterval< DoubleType > img = tr2dModel.getRawData();
-		final BdvHandlePanel bdv = new BdvHandlePanel( frame, Bdv.options().is2D() );
-		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) );
-		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, controls, bdv.getBdvHandle().getViewerPanel() );
-		splitPane.setOneTouchExpandable( true );
-		splitPane.setDividerLocation( 300 );
-
-		final JPanel splittedPanel = new JPanel();
-		splittedPanel.add( splitPane, BorderLayout.CENTER );
-		splittedPanel.setPreferredSize( new Dimension( 500, 500 ) );
-		return splittedPanel;
+	private JButton initAddButton()
+	{
+		final JButton bAdd = new JButton( "+" );
+		bAdd.addActionListener( new ButtonListener() );
+		return bAdd;
 	}
 
 	@Override
