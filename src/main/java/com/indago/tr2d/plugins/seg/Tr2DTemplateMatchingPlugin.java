@@ -19,6 +19,7 @@ import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextField;
 
 import org.scijava.Context;
 import org.scijava.command.CommandService;
@@ -29,7 +30,6 @@ import org.scijava.plugin.Plugin;
 import com.indago.IndagoLog;
 import com.indago.io.DoubleTypeImgLoader;
 import com.indago.tr2d.ui.model.Tr2dModel;
-import com.indago.tr2d.ui.util.JDoubleListTextPane;
 import com.mycompany.imagej.TemplateMatchingPlugin;
 
 import bdv.util.Bdv;
@@ -58,8 +58,11 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	DefaultListModel< String > model = new DefaultListModel<>();
 	private final JList< String > listTemplates = new JList<>( model );
 
-	private final JDoubleListTextPane txtThreshold = new JDoubleListTextPane();
 	private Tr2dModel tr2dModel;
+
+	private JTextField threshold;
+
+	private JTextField segRad;
 
 	@Override
 	public JPanel getInteractionPanel() {
@@ -108,15 +111,19 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		return controls;
 	}
 
+
 	private JPanel initHelperPanel()
 	{
-		JPanel helper = new JPanel( new BorderLayout() );
-		helper.add( new JLabel( "Thresholds:" ), BorderLayout.WEST );
-		JDoubleListTextPane txtThresholds = new JDoubleListTextPane();
-		txtThresholds.setEnabled( false );
-		helper.add( txtThresholds, BorderLayout.CENTER );
+		JPanel helper = new JPanel( new MigLayout() );
+		helper.add( new JLabel( "Threshold:" ), "" );
+		threshold = new JTextField();
+		helper.add( threshold, "wrap, width 100:20" );
+		helper.add( new JLabel( "Seg Radius:" ), "" );
+		segRad = new JTextField();
+		helper.add( segRad, "wrap, width 100:20" );
 		return helper;
 	}
+
 
 	private JPanel initListPanel()
 	{
@@ -156,8 +163,9 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		context.inject( plugin );
 		RandomAccessibleInterval< DoubleType > template =
 				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
-		int segmentationRadius = 2;
-		return plugin.calculate(tr2dModel.getRawData(), template, segmentationRadius);
+		Double matchingThreshold = Double.parseDouble( threshold.getText() );
+		int segmentationRadius = Integer.parseInt( segRad.getText() );
+		return plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
 
 	}
 
@@ -215,6 +223,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	public void onStartSegmentationButtonClicked( ActionEvent e ) {
 		getOutputs();
+
 	}
 
 
