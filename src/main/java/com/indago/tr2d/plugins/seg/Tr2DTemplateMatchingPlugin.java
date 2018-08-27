@@ -85,7 +85,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private < T > BdvHandlePanel initBdv( RandomAccessibleInterval< T > img )
 	{
 		final BdvHandlePanel bdv = new BdvHandlePanel( null, Bdv.options().is2D() );
-		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFFFFFF00 ) );;
+		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFFFFFF00 ) );
 		return bdv;
 	}
 
@@ -232,10 +232,16 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	}
 
 	public void onStartSegmentationButtonClicked( ActionEvent e ) {
-		List< RandomAccessibleInterval< IntType > > a = getOutputs();
-		int size = a.size();
-		BdvFunctions.show( a.get( size - 1 ), "reds", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFF00FF00 ) );;
+		List< RandomAccessibleInterval< IntType > > outputs = getOutputs();
+		int Min = 10;
+		int Max = 255;
+		for ( RandomAccessibleInterval< IntType > output : outputs ) {
+//		for ( int idx = 0; idx < outputs.size(); idx++ ) {
+//			int random = Min + ( int ) ( Math.random() * ( ( Max - Min ) + 1 ) );
+//			System.out.println( random );
+			BdvFunctions.show( output, "Overlays", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFF00FF00 ) );
 
+		}
 	}
 
 
