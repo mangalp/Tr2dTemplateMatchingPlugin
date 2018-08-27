@@ -36,6 +36,7 @@ import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandlePanel;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.miginfocom.swing.MigLayout;
@@ -64,25 +65,27 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	private JTextField segRad;
 
+	private BdvHandlePanel bdv;
+
 	@Override
 	public JPanel getInteractionPanel() {
 		final JPanel controls = initControlsPanel();
-		final BdvHandlePanel bdv = initBdv( tr2dModel.getRawData() );
-		return wrapToJPanel( initSplitPane( controls, bdv ) );
+		bdv = initBdv( tr2dModel.getRawData() );
+		return wrapToJPanel( initSplitPane( controls, bdv.getViewerPanel() ) );
 	}
 
-	private JSplitPane initSplitPane( JPanel controls, BdvHandlePanel bdv )
+	private JSplitPane initSplitPane( JPanel left, JPanel right )
 	{
-		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, controls, bdv.getBdvHandle().getViewerPanel() );
+		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, left, right );
 		splitPane.setOneTouchExpandable( true );
 		splitPane.setDividerLocation( 300 );
 		return splitPane;
 	}
 
-	private BdvHandlePanel initBdv( RandomAccessibleInterval< DoubleType > img )
+	private < T > BdvHandlePanel initBdv( RandomAccessibleInterval< T > img )
 	{
 		final BdvHandlePanel bdv = new BdvHandlePanel( null, Bdv.options().is2D() );
-		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) );
+		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFFFFFF00 ) );;
 		return bdv;
 	}
 
@@ -159,14 +162,21 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	@Override
 	public List< RandomAccessibleInterval< IntType > > getOutputs() {
-		TemplateMatchingPlugin plugin = new TemplateMatchingPlugin();
-		context.inject( plugin );
+		TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
 		RandomAccessibleInterval< DoubleType > template =
 				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
 		Double matchingThreshold = Double.parseDouble( threshold.getText() );
 		int segmentationRadius = Integer.parseInt( segRad.getText() );
+//		List<Point> hits = plugin.calculatePoints( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+//		return plugin.createSegmentation( hits, tr2dModel.getRawData(), segmentationRadius );
 		return plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
 
+	}
+
+	private TemplateMatchingPlugin createTemplateMatchingPlugin() {
+		TemplateMatchingPlugin plugin = new TemplateMatchingPlugin();
+		context.inject( plugin );
+		return plugin;
 	}
 
 	@Override
@@ -222,7 +232,9 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	}
 
 	public void onStartSegmentationButtonClicked( ActionEvent e ) {
-		getOutputs();
+		List< RandomAccessibleInterval< IntType > > a = getOutputs();
+		int size = a.size();
+		BdvFunctions.show( a.get( size - 1 ), "reds", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFF00FF00 ) );;
 
 	}
 
