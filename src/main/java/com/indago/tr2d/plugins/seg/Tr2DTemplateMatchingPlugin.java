@@ -8,15 +8,18 @@ import java.awt.BorderLayout;
 import java.awt.FlowLayout;
 import java.awt.event.ActionEvent;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
@@ -35,6 +38,7 @@ import com.mycompany.imagej.TemplateMatchingPlugin;
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandlePanel;
+import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.IntType;
@@ -67,6 +71,13 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	private BdvHandlePanel bdv;
 
+	private List< RandomAccessibleInterval< IntType > > segOutputs;
+
+	private ArrayList< BdvStackSource< IntType > > overlayObjectList = null;
+
+	private JDialog dlgProgress;
+
+
 	@Override
 	public JPanel getInteractionPanel() {
 		final JPanel controls = initControlsPanel();
@@ -85,7 +96,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private < T > BdvHandlePanel initBdv( RandomAccessibleInterval< T > img )
 	{
 		final BdvHandlePanel bdv = new BdvHandlePanel( null, Bdv.options().is2D() );
-		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFFFFFF00 ) );
+		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) );
 		return bdv;
 	}
 
@@ -160,8 +171,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		return bAdd;
 	}
 
-	@Override
-	public List< RandomAccessibleInterval< IntType > > getOutputs() {
+
+	public List< RandomAccessibleInterval< IntType > > displayOutputs() {
 		TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
 		RandomAccessibleInterval< DoubleType > template =
 				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
@@ -169,7 +180,14 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		int segmentationRadius = Integer.parseInt( segRad.getText() );
 //		List<Point> hits = plugin.calculatePoints( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
 //		return plugin.createSegmentation( hits, tr2dModel.getRawData(), segmentationRadius );
-		return plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+		segOutputs = plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+		return segOutputs;
+
+	}
+
+	@Override
+	public List< RandomAccessibleInterval< IntType > > getOutputs() {
+		return segOutputs;
 
 	}
 
@@ -231,17 +249,59 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		}
 	}
 
-	public void onStartSegmentationButtonClicked( ActionEvent e ) {
-		List< RandomAccessibleInterval< IntType > > outputs = getOutputs();
-		int Min = 10;
-		int Max = 255;
-		for ( RandomAccessibleInterval< IntType > output : outputs ) {
-//		for ( int idx = 0; idx < outputs.size(); idx++ ) {
-//			int random = Min + ( int ) ( Math.random() * ( ( Max - Min ) + 1 ) );
-//			System.out.println( random );
-			BdvFunctions.show( output, "Overlays", Bdv.options().addTo( bdv ) ).setColor( new ARGBType( 0xFF00FF00 ) );
 
+	public void onStartSegmentationButtonClicked( ActionEvent e ) {
+		clearOverlayListAndBdvOverlay();
+		startProgressBar();
+		List< RandomAccessibleInterval< IntType > > outputs = displayOutputs();
+		int overlayBucketSize = outputs.size();
+		overlayObjectList = new ArrayList< BdvStackSource< IntType > >( overlayBucketSize );
+		List< Integer > color = new ArrayList< Integer >();
+		color.add( 0xFF00FF00 );
+		color.add( 0xFFFF0000 );
+		color.add( 0xFFFFFF00 );
+		color.add( 0xFFFF00FF );
+		int count = -1;
+
+		for ( RandomAccessibleInterval< IntType > output : outputs ) {
+			BdvStackSource< IntType > entry = BdvFunctions.show( output, "Overlays", Bdv.options().addTo( bdv ) );
+			overlayObjectList.add( entry );
+			count += 1;
+			entry.setColor( new ARGBType( color.get( count ) ) );
+			entry.setDisplayRange( 0, 0 );
 		}
+//		dlgProgress.dispose();
+
+	}
+
+	private void startProgressBar() {
+		setJDialog();
+
+	}
+
+	public void setJDialog() {
+//		dlgProgress = new JDialog();
+//		JLabel lblStatus = new JLabel( "Processing!" );
+//		lblStatus.setSize( 250, 100 );
+//		dlgProgress.add( BorderLayout.NORTH, lblStatus );
+//		dlgProgress.setDefaultCloseOperation( JDialog.DO_NOTHING_ON_CLOSE );
+//		dlgProgress.setSize( 500, 200 );
+//		dlgProgress.setTitle( "Template Matching" );
+//		dlgProgress.setVisible( true );
+		JProgressBar progressBar = new JProgressBar();
+		progressBar.setStringPainted( true );
+		progressBar.setVisible( true );
+	}
+
+	private void clearOverlayListAndBdvOverlay() {
+
+		if ( overlayObjectList != null ) {
+			for ( BdvStackSource< IntType > overlayObject : overlayObjectList ) {
+				overlayObject.removeFromBdv();
+			}
+			overlayObjectList.clear();
+		}
+
 	}
 
 
