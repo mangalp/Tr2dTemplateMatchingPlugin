@@ -14,15 +14,15 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
-import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextField;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
 import org.scijava.Context;
 import org.scijava.command.CommandService;
@@ -63,6 +63,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	DefaultListModel< String > model = new DefaultListModel<>();
 	private final JList< String > listTemplates = new JList<>( model );
 
+	private final List< Boolean > listSegmenationPerformedWithTemplateIndicator = new ArrayList< Boolean >();
+
 	private Tr2dModel tr2dModel;
 
 	private JTextField threshold;
@@ -75,7 +77,10 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	private ArrayList< BdvStackSource< IntType > > overlayObjectList = null;
 
-	private JDialog dlgProgress;
+	private ArrayList< List< RandomAccessibleInterval< IntType > > > listofOutputsForAllTemplates =
+			new ArrayList< List< RandomAccessibleInterval< IntType > > >();
+
+	private boolean removalIndicator = false;
 
 
 	@Override
@@ -145,6 +150,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		final JButton bRemove = initRemoveButton();
 		final JPanel list = new JPanel( new BorderLayout() );
 		list.add( listTemplates, BorderLayout.CENTER );
+		listTemplateSelectionListenerInit();
 		list.setBorder( BorderFactory.createTitledBorder( "Templates" ) );
 		JPanel helper = new JPanel( new FlowLayout( FlowLayout.RIGHT ) );
 
@@ -155,6 +161,35 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		JScrollPane scrollPane = new JScrollPane( listTemplates );
 		list.add( scrollPane, BorderLayout.CENTER );
 		return list;
+	}
+
+	private void listTemplateSelectionListenerInit() {
+		listTemplates.addListSelectionListener( new ListSelectionListener() {
+
+			@Override
+			public void valueChanged( ListSelectionEvent e ) {
+				if ( !e.getValueIsAdjusting() ) {
+					if ( removalIndicator == false ) {
+						System.out.println( removalIndicator );
+						try {
+							System.out.println( "I am trying dude!!!" );
+							if ( listSegmenationPerformedWithTemplateIndicator.get( listTemplates.getSelectedIndex() ) ) {
+								clearOverlayListAndBdvOverlay();
+								showOverlay( listofOutputsForAllTemplates.get( listTemplates.getSelectedIndex() ) );
+							} else {
+								clearOverlayListAndBdvOverlay();
+							}
+						} catch ( ArrayIndexOutOfBoundsException exception ) {
+							listTemplates.setSelectedIndex( 0 );
+							System.out.print( "Nothing selected man!!!" );
+						}
+
+					}
+
+				}
+
+			}
+		} );
 	}
 
 	private JButton initRemoveButton()
@@ -172,7 +207,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	}
 
 
-	public List< RandomAccessibleInterval< IntType > > displayOutputs() {
+	public List< RandomAccessibleInterval< IntType > > fetchOutputs() {
 		TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
 		RandomAccessibleInterval< DoubleType > template =
 				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
@@ -181,6 +216,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 //		List<Point> hits = plugin.calculatePoints( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
 //		return plugin.createSegmentation( hits, tr2dModel.getRawData(), segmentationRadius );
 		segOutputs = plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+		listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
 		return segOutputs;
 
 	}
@@ -235,25 +271,36 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 				//below line to test the file chooser
 				System.out.println( path );
 				model.addElement( path );
+				listSegmenationPerformedWithTemplateIndicator.add( false );
 				System.out.println( model.getSize() );
 			}
 		}
 	}
 
 	public void onRemoveButtonClicked( ActionEvent e ) {
-		int[] idxs = listTemplates.getSelectedIndices();
-		for ( int index = 0; index < idxs.length; index++ ) {
-			if ( index >= 0 ) {
-				model.remove( index );
-			}
+		int idx = listTemplates.getSelectedIndex();
+		removalIndicator = true;
+		model.remove( idx );
+		try {
+			listSegmenationPerformedWithTemplateIndicator.remove( idx );
+			listofOutputsForAllTemplates.remove( idx );
+		} catch ( IndexOutOfBoundsException exception ) {
+			System.out.println( "Hey! This was not even initialized!!!" );
 		}
+
+		removalIndicator = false;
 	}
 
 
 	public void onStartSegmentationButtonClicked( ActionEvent e ) {
 		clearOverlayListAndBdvOverlay();
-		startProgressBar();
-		List< RandomAccessibleInterval< IntType > > outputs = displayOutputs();
+		List< RandomAccessibleInterval< IntType > > outputs = fetchOutputs();
+		showOverlay( outputs );
+		listofOutputsForAllTemplates.add( outputs );
+
+	}
+
+	private void showOverlay( List< RandomAccessibleInterval< IntType > > outputs ) {
 		int overlayBucketSize = outputs.size();
 		overlayObjectList = new ArrayList< BdvStackSource< IntType > >( overlayBucketSize );
 		List< Integer > color = new ArrayList< Integer >();
@@ -261,6 +308,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		color.add( 0xFFFF0000 );
 		color.add( 0xFFFFFF00 );
 		color.add( 0xFFFF00FF );
+		color.add( 0x0000FF );
 		int count = -1;
 
 		for ( RandomAccessibleInterval< IntType > output : outputs ) {
@@ -270,28 +318,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 			entry.setColor( new ARGBType( color.get( count ) ) );
 			entry.setDisplayRange( 0, 0 );
 		}
-//		dlgProgress.dispose();
-
 	}
 
-	private void startProgressBar() {
-		setJDialog();
-
-	}
-
-	public void setJDialog() {
-//		dlgProgress = new JDialog();
-//		JLabel lblStatus = new JLabel( "Processing!" );
-//		lblStatus.setSize( 250, 100 );
-//		dlgProgress.add( BorderLayout.NORTH, lblStatus );
-//		dlgProgress.setDefaultCloseOperation( JDialog.DO_NOTHING_ON_CLOSE );
-//		dlgProgress.setSize( 500, 200 );
-//		dlgProgress.setTitle( "Template Matching" );
-//		dlgProgress.setVisible( true );
-		JProgressBar progressBar = new JProgressBar();
-		progressBar.setStringPainted( true );
-		progressBar.setVisible( true );
-	}
 
 	private void clearOverlayListAndBdvOverlay() {
 
@@ -303,8 +331,6 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		}
 
 	}
-
-
 
 
 }
