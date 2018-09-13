@@ -81,8 +81,6 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	private BdvHandlePanel bdv;
 
-//	private List< RandomAccessibleInterval< IntType > > segOutputs;
-
 	private ArrayList< BdvStackSource< IntType > > overlayObjectList = null;
 
 	private ArrayList< List< RandomAccessibleInterval< IntType > > > listofOutputsForAllTemplates =
@@ -93,6 +91,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private JProgressBar progressBar = new JProgressBar();
 
 	private JDialog downloadingDialog;
+
+	private boolean templateRunMoreThanOnce = false;
 
 	@Override
 	public JPanel getInteractionPanel() {
@@ -232,15 +232,21 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 
 	public List< RandomAccessibleInterval< IntType > > fetchOutputs() {
-		TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
-		RandomAccessibleInterval< DoubleType > template =
-				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
-		Double matchingThreshold = Double.parseDouble( threshold.getText() );
-		int segmentationRadius = Integer.parseInt( segRad.getText() );
-		List< RandomAccessibleInterval< IntType > > segOutputs =
-				plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
-		listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
-		return segOutputs;
+		if ( listSegmenationPerformedWithTemplateIndicator.get( listTemplates.getSelectedIndex() ) ) {
+			List< RandomAccessibleInterval< IntType > > segOutputs = listofOutputsForAllTemplates.get( listTemplates.getSelectedIndex() );
+			templateRunMoreThanOnce = true;
+			return segOutputs;
+		} else {
+			TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
+			RandomAccessibleInterval< DoubleType > template =
+					DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
+			Double matchingThreshold = Double.parseDouble( threshold.getText() );
+			int segmentationRadius = Integer.parseInt( segRad.getText() );
+			List< RandomAccessibleInterval< IntType > > segOutputs =
+					plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+			listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
+			return segOutputs;
+		}
 
 	}
 
@@ -280,10 +286,12 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 			@Override
 			protected void done() {
 
-				// Close the dialog
 				dialogWaiting.dispose();
+				if ( templateRunMoreThanOnce == false ) {
+					listofOutputsForAllTemplates.add( fetchedOutputs );
+				}
 				showOverlay( fetchedOutputs );
-				listofOutputsForAllTemplates.add( fetchedOutputs );
+
 				System.out.println( listofOutputsForAllTemplates.size() );
 			}
 
@@ -350,8 +358,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 			File f = fileChooser.getSelectedFile();
 			if ( f != null ) { // Make sure the user didn't choose a directory.
 
-				path = f.getAbsolutePath();//get the absolute path to selected file
-				//below line to test the file chooser
+				path = f.getAbsolutePath();
 				System.out.println( path );
 				listSegmenationPerformedWithTemplateIndicator.add( false );
 				model.addElement( path );
@@ -375,9 +382,6 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 		clearOverlayListAndBdvOverlay();
 		dialogWaiting();
-//		List< RandomAccessibleInterval< IntType > > outputs = fetchOutputs();
-//		showOverlay( outputs );
-//		listofOutputsForAllTemplates.add( outputs );
 
 	}
 
