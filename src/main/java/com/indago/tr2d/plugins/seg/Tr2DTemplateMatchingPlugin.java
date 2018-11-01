@@ -5,28 +5,33 @@
 package com.indago.tr2d.plugins.seg;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Image;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.io.File;
-import java.io.IOException;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.swing.BorderFactory;
 import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.SwingWorker;
+import javax.swing.event.ListSelectionEvent;
+import javax.swing.event.ListSelectionListener;
 
-import com.indago.io.DoubleTypeImgLoader;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.log.Logger;
@@ -34,14 +39,16 @@ import org.scijava.plugin.Parameter;
 import org.scijava.plugin.Plugin;
 
 import com.indago.IndagoLog;
+import com.indago.io.DoubleTypeImgLoader;
 import com.indago.tr2d.ui.model.Tr2dModel;
-import com.indago.tr2d.ui.util.JDoubleListTextPane;
 import com.mycompany.imagej.TemplateMatchingPlugin;
 
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
 import bdv.util.BdvHandlePanel;
+import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.miginfocom.swing.MigLayout;
@@ -64,25 +71,45 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	DefaultListModel< String > model = new DefaultListModel<>();
 	private final JList< String > listTemplates = new JList<>( model );
 
-	private final JDoubleListTextPane txtThreshold = new JDoubleListTextPane();
+	private final List< Boolean > listSegmenationPerformedWithTemplateIndicator = new ArrayList< Boolean >();
+
 	private Tr2dModel tr2dModel;
+
+	private JTextField threshold;
+
+	private JTextField segRad;
+
+	private BdvHandlePanel bdv;
+
+	private ArrayList< BdvStackSource< IntType > > overlayObjectList = null;
+
+	private ArrayList< List< RandomAccessibleInterval< IntType > > > listofOutputsForAllTemplates =
+			new ArrayList< List< RandomAccessibleInterval< IntType > > >();
+
+	private boolean removalIndicator = false;
+
+	private JProgressBar progressBar = new JProgressBar();
+
+	private JDialog downloadingDialog;
+
+	private boolean templateRunMoreThanOnce = false;
 
 	@Override
 	public JPanel getInteractionPanel() {
 		final JPanel controls = initControlsPanel();
-		final BdvHandlePanel bdv = initBdv( tr2dModel.getRawData() );
-		return wrapToJPanel( initSplitPane( controls, bdv ) );
+		bdv = initBdv( tr2dModel.getRawData() );
+		return wrapToJPanel( initSplitPane( controls, bdv.getViewerPanel() ) );
 	}
 
-	private JSplitPane initSplitPane( JPanel controls, BdvHandlePanel bdv )
+	private JSplitPane initSplitPane( JPanel left, JPanel right )
 	{
-		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, controls, bdv.getBdvHandle().getViewerPanel() );
+		final JSplitPane splitPane = new JSplitPane( JSplitPane.HORIZONTAL_SPLIT, left, right );
 		splitPane.setOneTouchExpandable( true );
 		splitPane.setDividerLocation( 300 );
 		return splitPane;
 	}
 
-	private BdvHandlePanel initBdv( RandomAccessibleInterval< DoubleType > img )
+	private < T > BdvHandlePanel initBdv( RandomAccessibleInterval< T > img )
 	{
 		final BdvHandlePanel bdv = new BdvHandlePanel( null, Bdv.options().is2D() );
 		BdvFunctions.show( img, "img", Bdv.options().addTo( bdv ) );
@@ -109,19 +136,40 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		controls.add( helper, "growx, wrap" );
 
 		JButton bStartSegmentation = new JButton( "start matching with selected template" );
+		bStartSegmentation.addActionListener( this::onStartSegmentationButtonClicked );
 		controls.add( bStartSegmentation, "growx, gapy 5 0, wrap" );
 		return controls;
 	}
 
+
 	private JPanel initHelperPanel()
 	{
-		JPanel helper = new JPanel( new BorderLayout() );
-		helper.add( new JLabel( "Thresholds:" ), BorderLayout.WEST );
-		JDoubleListTextPane txtThresholds = new JDoubleListTextPane();
-		txtThresholds.setEnabled( false );
-		helper.add( txtThresholds, BorderLayout.CENTER );
+
+		JPanel helper = new JPanel( new MigLayout( "" ) );
+		helper.add( new JLabel( "Threshold:" ) );
+		threshold = new JTextField();
+		ImageIcon imageIcon = createQuestionIcon();
+		JLabel thresholdIconLabel = new JLabel( imageIcon );
+		thresholdIconLabel.setToolTipText( "Threshold for template matching" );
+		helper.add( threshold, "width 100:20" );
+		helper.add( thresholdIconLabel, "wrap" );
+		helper.add( new JLabel( "Marker Radius:" ), "" );
+		segRad = new JTextField();
+		JLabel segRadiusIconLabel = new JLabel( imageIcon );
+		segRadiusIconLabel.setToolTipText( "Radius of circle to draw detection points after matching is performed" );
+		helper.add( segRad, "width 100:20" );
+		helper.add( segRadiusIconLabel );
 		return helper;
 	}
+
+	private ImageIcon createQuestionIcon() {
+		ImageIcon imageIcon = new ImageIcon( this.getClass().getResource( "/images/questionIcon.gif" ) );
+		Image image = imageIcon.getImage();
+		Image newimg = image.getScaledInstance( 30, 30, java.awt.Image.SCALE_SMOOTH );
+		imageIcon = new ImageIcon( newimg );
+		return imageIcon;
+	}
+
 
 	private JPanel initListPanel()
 	{
@@ -129,6 +177,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		final JButton bRemove = initRemoveButton();
 		final JPanel list = new JPanel( new BorderLayout() );
 		list.add( listTemplates, BorderLayout.CENTER );
+		listTemplateSelectionListenerInit();
 		list.setBorder( BorderFactory.createTitledBorder( "Templates" ) );
 		JPanel helper = new JPanel( new FlowLayout( FlowLayout.RIGHT ) );
 
@@ -141,27 +190,138 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		return list;
 	}
 
+	private void listTemplateSelectionListenerInit() {
+		listTemplates.addListSelectionListener( new ListSelectionListener() {
+
+			@Override
+			public void valueChanged( ListSelectionEvent e ) {
+				if ( !e.getValueIsAdjusting() ) {
+					if ( listTemplates.getModel().getSize() > 0 ) {
+						if ( listTemplates.getSelectedIndex() == -1 ) {
+							listTemplates.setSelectedIndex( 0 );
+
+						}
+						if ( listSegmenationPerformedWithTemplateIndicator.get( listTemplates.getSelectedIndex() ) ) {
+							clearOverlayListAndBdvOverlay();
+							showOverlay( listofOutputsForAllTemplates.get( listTemplates.getSelectedIndex() ) );
+						} else {
+							clearOverlayListAndBdvOverlay();
+						}
+					}
+
+				}
+
+			}
+		} );
+	}
+
+
 	private JButton initRemoveButton()
 	{
 		final JButton bRemove = new JButton( "-" );
-		bRemove.addActionListener( new ButtonListener() );
+		bRemove.addActionListener( this::onRemoveButtonClicked );
 		return bRemove;
 	}
 
 	private JButton initAddButton()
 	{
 		final JButton bAdd = new JButton( "+" );
-		bAdd.addActionListener( new ButtonListener() );
+		bAdd.addActionListener( this::onAddButtonClicked );
 		return bAdd;
 	}
 
+
+	public List< RandomAccessibleInterval< IntType > > fetchOutputs() {
+		if ( listSegmenationPerformedWithTemplateIndicator.get( listTemplates.getSelectedIndex() ) ) {
+			List< RandomAccessibleInterval< IntType > > segOutputs = listofOutputsForAllTemplates.get( listTemplates.getSelectedIndex() );
+			templateRunMoreThanOnce = true;
+			return segOutputs;
+		} else {
+			TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
+			RandomAccessibleInterval< DoubleType > template =
+					DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
+			Double matchingThreshold = Double.parseDouble( threshold.getText() );
+			int segmentationRadius = Integer.parseInt( segRad.getText() );
+			List< RandomAccessibleInterval< IntType > > segOutputs =
+					plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+			listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
+			return segOutputs;
+		}
+
+	}
+
+	private void dialogWaiting() {
+		JProgressBar progressBar = new JProgressBar();
+		progressBar.setIndeterminate( true );
+		JTextArea msgLabel;
+		final JDialog dialogWaiting;
+		JPanel panel;
+
+		msgLabel = new JTextArea( "Matching with selected template and creating segmentations..." );
+		msgLabel.setEditable( false );
+
+		panel = new JPanel( new BorderLayout( 5, 5 ) );
+		panel.add( msgLabel, BorderLayout.PAGE_START );
+		panel.add( progressBar, BorderLayout.CENTER );
+		panel.setBorder( BorderFactory.createEmptyBorder( 11, 11, 11, 11 ) );
+
+		dialogWaiting = new JDialog( ( JFrame ) null, "Progress...", true );
+		dialogWaiting.getContentPane().add( panel );
+		dialogWaiting.setResizable( false );
+		dialogWaiting.pack();
+		dialogWaiting.setSize( 450, dialogWaiting.getHeight() );
+		dialogWaiting.setLocationRelativeTo( null );
+		dialogWaiting.setDefaultCloseOperation( JDialog.DO_NOTHING_ON_CLOSE );
+		dialogWaiting.setAlwaysOnTop( true );
+		msgLabel.setBackground( panel.getBackground() );
+
+		fetchOutputsWhileWaitingDialogOn( dialogWaiting );
+	}
+
+	private void fetchOutputsWhileWaitingDialogOn( final JDialog dialogWaiting ) {
+		SwingWorker worker = new SwingWorker() {
+
+			private List< RandomAccessibleInterval< IntType > > fetchedOutputs;
+
+			@Override
+			protected void done() {
+
+				dialogWaiting.dispose();
+				if ( templateRunMoreThanOnce == false ) {
+					listofOutputsForAllTemplates.add( fetchedOutputs );
+				}
+				showOverlay( fetchedOutputs );
+
+				System.out.println( listofOutputsForAllTemplates.size() );
+			}
+
+			@Override
+			protected List< RandomAccessibleInterval< IntType > > doInBackground() {
+				fetchedOutputs = fetchOutputs();
+				return fetchedOutputs;
+			}
+		};
+
+		worker.execute();
+		dialogWaiting.setVisible( true );
+	}
+
+
 	@Override
 	public List< RandomAccessibleInterval< IntType > > getOutputs() {
-		TemplateMatchingPlugin< ? > plugin = new TemplateMatchingPlugin<>();
-		RandomAccessibleInterval< DoubleType > template =
-				DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
-		int segmentationRadius = 2;
-		return plugin.calculate(tr2dModel.getRawData(), template, segmentationRadius);
+		List< RandomAccessibleInterval< IntType > > segmentationMasksForAllTemplates =
+				listofOutputsForAllTemplates
+						.stream()
+						.flatMap( List::stream )
+						.collect( Collectors.toList() );
+		return segmentationMasksForAllTemplates;
+
+	}
+
+	private TemplateMatchingPlugin createTemplateMatchingPlugin() {
+		TemplateMatchingPlugin plugin = new TemplateMatchingPlugin();
+		context.inject( plugin );
+		return plugin;
 	}
 
 	@Override
@@ -189,48 +349,73 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 		// panel.close();
 	}
 
-	class ButtonListener implements ActionListener {
+	public void onAddButtonClicked( ActionEvent e ) {
+		JFileChooser fileChooser = new JFileChooser();
+		int returnName = fileChooser.showOpenDialog( null );
+		String path;
 
-		public ButtonListener() {
-			// TODO Auto-generated constructor stub
-		}
+		if ( returnName == JFileChooser.APPROVE_OPTION ) {
+			File f = fileChooser.getSelectedFile();
+			if ( f != null ) { // Make sure the user didn't choose a directory.
 
-		@Override
-		public void actionPerformed( ActionEvent e ) {
-			if ( e.getActionCommand().equals( "+" ) ) {
-				JFileChooser fileChooser = new JFileChooser();
-				int returnName = fileChooser.showOpenDialog( null );
-				String path;
-
-				if ( returnName == JFileChooser.APPROVE_OPTION ) {
-					File f = fileChooser.getSelectedFile();
-					if ( f != null ) { // Make sure the user didn't choose a directory.
-
-						path = f.getAbsolutePath();//get the absolute path to selected file
-						//below line to test the file chooser
-						System.out.println( path );
-						model.addElement( path );
-						System.out.println( model.getSize() );
-					}
-				}
-
-			}
-			if(e.getActionCommand().equals( "-" )) {
-
-				int[] idxs = listTemplates.getSelectedIndices();
-				for ( int index = 0; index < idxs.length; index++ ) {
-					if ( index >= 0 ) {
-						model.remove( index );
-					}
-
-				}
-				
-
-			}
-			if ( e.getActionCommand().equals( "start matching with selected template" ) ) {
-				// Do template Matching with the given threshold 
-				
+				path = f.getAbsolutePath();
+				System.out.println( path );
+				listSegmenationPerformedWithTemplateIndicator.add( false );
+				model.addElement( path );
 			}
 		}
 	}
+
+	public void onRemoveButtonClicked( ActionEvent e ) {
+		int idx = listTemplates.getSelectedIndex();
+		removalIndicator = true;
+		model.remove( idx );
+		listSegmenationPerformedWithTemplateIndicator.remove( idx );
+		if ( idx < listofOutputsForAllTemplates.size() ) {
+			listofOutputsForAllTemplates.remove( idx );
+		}
+		removalIndicator = false;
+	}
+
+
+	public void onStartSegmentationButtonClicked( ActionEvent e ) {
+
+		clearOverlayListAndBdvOverlay();
+		dialogWaiting();
+
+	}
+
+	private void showOverlay( List< RandomAccessibleInterval< IntType > > outputs ) {
+		int overlayBucketSize = outputs.size();
+		overlayObjectList = new ArrayList< BdvStackSource< IntType > >( overlayBucketSize );
+		List< Integer > color = new ArrayList< Integer >();
+		color.add( 0xFF00FF00 );
+		color.add( 0xFFFF0000 );
+		color.add( 0xFFFFFF00 );
+		color.add( 0xFFFF00FF );
+		color.add( 0x0000FF );
+		int count = -1;
+
+		for ( RandomAccessibleInterval< IntType > output : outputs ) {
+			BdvStackSource< IntType > entry = BdvFunctions.show( output, "Overlays", Bdv.options().addTo( bdv ) );
+			overlayObjectList.add( entry );
+			count += 1;
+			entry.setColor( new ARGBType( color.get( count ) ) );
+			entry.setDisplayRange( 0, 0 );
+		}
+	}
+
+
+	private void clearOverlayListAndBdvOverlay() {
+
+		if ( overlayObjectList != null ) {
+			for ( BdvStackSource< IntType > overlayObject : overlayObjectList ) {
+				overlayObject.removeFromBdv();
+			}
+			overlayObjectList.clear();
+		}
+
+	}
+
+
 }
