@@ -33,14 +33,13 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
 import com.mycompany.imagej.TemplateMatchingAlgorithm;
+import ij.IJ;
+import net.imglib2.img.ImagePlusAdapter;
+import net.imglib2.img.Img;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.log.Logger;
 import org.scijava.plugin.Parameter;
-
-import com.indago.IndagoLog;
-import com.indago.io.DoubleTypeImgLoader;
-import com.indago.tr2d.ui.model.Tr2dModel;
 
 import bdv.util.Bdv;
 import bdv.util.BdvFunctions;
@@ -63,14 +62,12 @@ public class TemplateMatchingPanel implements AutoCloseable {
 	@Parameter
 	private CommandService commandService;
 
-	public Logger log = IndagoLog.stdLogger().subLogger( "Tr2dTemplateMatchingPlugin" );
+	public Logger log;
 
 	DefaultListModel< String > model = new DefaultListModel<>();
 	private final JList< String > listTemplates = new JList<>( model );
 
 	private final List< Boolean > listSegmenationPerformedWithTemplateIndicator = new ArrayList< Boolean >();
-
-	private final Tr2dModel tr2dModel;
 
 	private JTextField threshold;
 
@@ -85,14 +82,17 @@ public class TemplateMatchingPanel implements AutoCloseable {
 
 	private boolean templateRunMoreThanOnce = false;
 
-	public TemplateMatchingPanel( Context context, Tr2dModel tr2dModel ) {
-		this.tr2dModel = tr2dModel;
+	private RandomAccessibleInterval< DoubleType > rawData;
+
+	public TemplateMatchingPanel( RandomAccessibleInterval< DoubleType > image, Context context, Logger log ) {
+		this.rawData = image;
+		this.log = log;
 		context.inject( this );
 	}
 
-	public JPanel getInteractionPanel() {
+	public JPanel getPanel() {
 		final JPanel controls = initControlsPanel();
-		bdv = initBdv( tr2dModel.getRawData() );
+		bdv = initBdv( rawData );
 		return wrapToJPanel( initSplitPane( controls, bdv.getViewerPanel() ) );
 	}
 
@@ -234,12 +234,12 @@ public class TemplateMatchingPanel implements AutoCloseable {
 			templateRunMoreThanOnce = true;
 			return segOutputs;
 		} else {
-			RandomAccessibleInterval< DoubleType > template =
-					DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
+			final File file = new File( listTemplates.getSelectedValue() );
+			RandomAccessibleInterval< DoubleType > template = (Img< DoubleType > ) ImagePlusAdapter.wrapReal( IJ.openImage( file.getAbsolutePath() ) );
 			Double matchingThreshold = Double.parseDouble( threshold.getText() );
 			int segmentationRadius = Integer.parseInt( segRad.getText() );
 			List< RandomAccessibleInterval< IntType > > segOutputs = ( List )
-					new TemplateMatchingAlgorithm( context ).calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold, null );
+					new TemplateMatchingAlgorithm( context ).calculate( rawData, template, segmentationRadius, matchingThreshold, null );
 			listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
 			return segOutputs;
 		}

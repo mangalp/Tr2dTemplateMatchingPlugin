@@ -1,5 +1,6 @@
 package com.indago.tr2d.plugins.seg;
 
+import com.indago.IndagoLog;
 import com.indago.tr2d.ui.model.Tr2dModel;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.integer.IntType;
@@ -22,7 +23,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin
 	@Override
 	public JPanel getInteractionPanel()
 	{
-		return panel.getInteractionPanel();
+		return panel.getPanel();
 	}
 
 	@Override
@@ -34,7 +35,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin
 	@Override
 	public void setTr2dModel( Tr2dModel tr2dModel )
 	{
-		panel = new TemplateMatchingPanel( context, tr2dModel );
+		Logger log = IndagoLog.stdLogger().subLogger( "Tr2dTemplateMatchingPlugin" );
+		panel = new TemplateMatchingPanel( tr2dModel.getRawData(), context, log );
 	}
 
 	@Override
