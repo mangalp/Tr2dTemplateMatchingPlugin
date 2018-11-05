@@ -335,12 +335,12 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	@Override
 	public boolean isUsable() {
-		return true; //panel.isUsable();
+		return true;
 	}
 
 	@Override
 	public void close() {
-		// panel.close();
+		bdv.close();
 	}
 
 	public void onAddButtonClicked( ActionEvent e ) {
