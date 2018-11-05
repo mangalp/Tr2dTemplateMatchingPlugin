@@ -388,23 +388,16 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private void showOverlay( List< RandomAccessibleInterval< IntType > > outputs ) {
 		int overlayBucketSize = outputs.size();
 		overlayObjectList = new ArrayList< BdvStackSource< IntType > >( overlayBucketSize );
-		List< Integer > color = new ArrayList< Integer >();
-		color.add( 0xFF00FF00 );
-		color.add( 0xFFFF0000 );
-		color.add( 0xFFFFFF00 );
-		color.add( 0xFFFF00FF );
-		color.add( 0x0000FF );
 		int count = -1;
 
 		for ( RandomAccessibleInterval< IntType > output : outputs ) {
 			BdvStackSource< IntType > entry = BdvFunctions.show( output, "Overlays", Bdv.options().addTo( bdv ) );
 			overlayObjectList.add( entry );
 			count += 1;
-			entry.setColor( new ARGBType( color.get( count ) ) );
+			entry.setColor( ColorGenerator.getColor( count ) );
 			entry.setDisplayRange( 0, 0 );
 		}
 	}
-
 
 	private void clearOverlayListAndBdvOverlay() {
 
