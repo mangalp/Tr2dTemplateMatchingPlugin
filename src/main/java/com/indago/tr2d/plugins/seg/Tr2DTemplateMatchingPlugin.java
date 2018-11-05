@@ -2,6 +2,7 @@ package com.indago.tr2d.plugins.seg;
 
 import com.indago.IndagoLog;
 import com.indago.tr2d.ui.model.Tr2dModel;
+import com.indago.template_matching.TemplateMatchingPanel;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.integer.IntType;
 import org.scijava.Context;
