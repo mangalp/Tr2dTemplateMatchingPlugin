@@ -32,6 +32,7 @@ import javax.swing.SwingWorker;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 
+import com.mycompany.imagej.TemplateMatchingAlgorithm;
 import org.scijava.Context;
 import org.scijava.command.CommandService;
 import org.scijava.log.Logger;
@@ -48,7 +49,6 @@ import bdv.util.BdvFunctions;
 import bdv.util.BdvHandlePanel;
 import bdv.util.BdvStackSource;
 import net.imglib2.RandomAccessibleInterval;
-import net.imglib2.type.numeric.ARGBType;
 import net.imglib2.type.numeric.integer.IntType;
 import net.imglib2.type.numeric.real.DoubleType;
 import net.miginfocom.swing.MigLayout;
@@ -231,13 +231,12 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 			templateRunMoreThanOnce = true;
 			return segOutputs;
 		} else {
-			TemplateMatchingPlugin plugin = createTemplateMatchingPlugin();
 			RandomAccessibleInterval< DoubleType > template =
 					DoubleTypeImgLoader.loadTiff( new File( listTemplates.getSelectedValue() ) );
 			Double matchingThreshold = Double.parseDouble( threshold.getText() );
 			int segmentationRadius = Integer.parseInt( segRad.getText() );
-			List< RandomAccessibleInterval< IntType > > segOutputs =
-					plugin.calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold );
+			List< RandomAccessibleInterval< IntType > > segOutputs = ( List )
+					new TemplateMatchingAlgorithm( context ).calculate( tr2dModel.getRawData(), template, segmentationRadius, matchingThreshold, null );
 			listSegmenationPerformedWithTemplateIndicator.set( listTemplates.getSelectedIndex(), true );
 			return segOutputs;
 		}
