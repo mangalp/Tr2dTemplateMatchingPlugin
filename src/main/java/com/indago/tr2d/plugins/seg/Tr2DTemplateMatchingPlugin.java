@@ -86,12 +86,6 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	private ArrayList< List< RandomAccessibleInterval< IntType > > > listofOutputsForAllTemplates =
 			new ArrayList< List< RandomAccessibleInterval< IntType > > >();
 
-	private boolean removalIndicator = false;
-
-	private JProgressBar progressBar = new JProgressBar();
-
-	private JDialog downloadingDialog;
-
 	private boolean templateRunMoreThanOnce = false;
 
 	@Override
@@ -368,13 +362,11 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 
 	public void onRemoveButtonClicked( ActionEvent e ) {
 		int idx = listTemplates.getSelectedIndex();
-		removalIndicator = true;
 		model.remove( idx );
 		listSegmenationPerformedWithTemplateIndicator.remove( idx );
 		if ( idx < listofOutputsForAllTemplates.size() ) {
 			listofOutputsForAllTemplates.remove( idx );
 		}
-		removalIndicator = false;
 	}
 
 
