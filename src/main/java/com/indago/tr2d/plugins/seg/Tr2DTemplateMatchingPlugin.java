@@ -163,7 +163,7 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin, AutoC
 	}
 
 	private ImageIcon createQuestionIcon() {
-		ImageIcon imageIcon = new ImageIcon( this.getClass().getResource( "/images/questionIcon.gif" ) );
+		ImageIcon imageIcon = new ImageIcon( this.getClass().getResource( "/questionIcon.gif" ) );
 		Image image = imageIcon.getImage();
 		Image newimg = image.getScaledInstance( 30, 30, java.awt.Image.SCALE_SMOOTH );
 		imageIcon = new ImageIcon( newimg );
