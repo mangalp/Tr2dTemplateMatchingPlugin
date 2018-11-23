@@ -21,6 +21,8 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin
 
 	TemplateMatchingPanel panel;
 
+	Logger log = IndagoLog.stdLogger().subLogger( "Tr2dTemplateMatchingPlugin" );
+
 	@Override
 	public JPanel getInteractionPanel()
 	{
@@ -36,7 +38,6 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin
 	@Override
 	public void setTr2dModel( Tr2dModel tr2dModel )
 	{
-		Logger log = IndagoLog.stdLogger().subLogger( "Tr2dTemplateMatchingPlugin" );
 		panel = new TemplateMatchingPanel( tr2dModel.getRawData(), context, log );
 	}
 
@@ -47,9 +48,9 @@ public class Tr2DTemplateMatchingPlugin implements Tr2dSegmentationPlugin
 	}
 
 	@Override
-	public void setLogger( Logger logger )
+	public void setLogger( Logger log )
 	{
-		panel.setLogger( logger );
+		this.log = log;
 	}
 
 	@Override
